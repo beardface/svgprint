@@ -6,6 +6,11 @@ import sys
 import pygame
 from pygame import gfxdraw
 
+def scanPixel(pixel, x, y, preview):
+    if pixel[0] != 255:
+        if preview:
+            pygame.draw.line(window, (255, 255, 255), (x, y), (x, y))
+            pygame.display.flip() 
 
 parser = OptionParser()
 parser.add_option("-f", "--file", dest="svgfile", help="SVG Layer File to Print")
@@ -33,19 +38,11 @@ print cur_pixel
 if options.vertical:
     for x in range(width):
         for y in range(height):
-            cur_pixel = pixels[x, y]
-            if cur_pixel[0] != 255:
-                if options.preview:
-                    pygame.draw.line(window, (255, 255, 255), (x, y), (x, y))
-                    pygame.display.flip() 
+            scanPixel(pixels[x, y], x, y, options.preview)
 else:
     for y in range(height):
         for x in range(width):
-            cur_pixel = pixels[x, y]
-            if cur_pixel[0] != 255:
-                if options.preview:
-                    pygame.draw.line(window, (255, 255, 255), (x, y), (x, y))
-                    pygame.display.flip() 
+            scanPixel(pixels[x, y], x, y, options.preview)
 
 print options.svgfile,
 print " Height:",
