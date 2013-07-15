@@ -1,6 +1,6 @@
 #!/bin/bash
 DOTS_PER_INCH=2540
-
+BGCOLOR=#000000
 LAYER_COUNT=`fgrep layer $1 | wc -l`
 touch .layers
 echo $LAYER_COUNT > .layers
@@ -16,7 +16,7 @@ mkdir $1.out
 
 touch svg_export_$1_commands.txt
 for ((i=0; i <$LAYER_COUNT; i++)); do
-   echo -j -i layer$i -e $1.out/layer$i.png $1 -C --export-dpi $DOTS_PER_INCH  >> svg_export_$1_commands.txt
+   echo -j -i layer$i -e $1.out/layer$i.png $1 -C --export-background=$BGCOLOR --export-dpi $DOTS_PER_INCH  >> svg_export_$1_commands.txt
 done
 
 inkscape --shell < svg_export_$1_commands.txt
