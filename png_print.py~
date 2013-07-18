@@ -18,7 +18,7 @@ def scanPixel(pixel, x, y, preview, laser, w,h):
             pygame.draw.line(window, (255, 255, 255), (x, y), (x, y))
             pygame.display.flip()
         if laser:
-            ol.dot((sX,sY),100,ol.C_WHITE)
+            ol.dot((sX,sY),1,ol.C_WHITE)
             ol.renderFrame(100)             
 
 parser = OptionParser()

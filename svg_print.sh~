@@ -1,5 +1,5 @@
 #!/bin/bash
-#./svg_export.sh $1
+./svg_export.sh $1
 
 python zero_pad.py -p $1.out
 

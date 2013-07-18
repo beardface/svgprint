@@ -1,0 +1,2 @@
+-j -i layer0 -e EiffelTower.svg.out/layer0.png EiffelTower.svg -C --export-background=#000000 --export-dpi 2540
+-j -i layer1 -e EiffelTower.svg.out/layer1.png EiffelTower.svg -C --export-background=#000000 --export-dpi 2540

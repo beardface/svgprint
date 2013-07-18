@@ -1,7 +1,8 @@
 #!/bin/bash
 DOTS_PER_INCH=2540
 BGCOLOR=#000000
-LAYER_COUNT=`fgrep layer $1 | wc -l`
+LAYER_COUNT=2
+#`fgrep layer $1 | wc -l`
 touch .layers
 echo $LAYER_COUNT > .layers
 
