@@ -5,10 +5,27 @@ import sys
 #import and init pygame
 import pygame
 from pygame import gfxdraw
+
 import pylase as ol
 
 from math import pi
 
+def IsPixelOn(pixel):
+    if pixel[0] != 255:
+        return True
+    else:
+        return False
+
+def PixelCoordToGalvoCoord(x, y, w, h):
+    sX=(float(x)/float(w))*2.0 - 1.0
+    sY=(float(y)/float(h))*2.0 - 1.0
+    return [sX, sY]
+
+def GalvoCoordToPixelCoord(point, w, h):
+    sX=((point[0]+1.0)/2.0)*w
+    sY=((point[1]+1.0)/2.0)*h
+    return [sX, sY]
+               
 def scanPixel(pixel, x, y, preview, laser, w,h):
     sX=(float(x)/float(w))*2.0 - 1.0
     sY=(float(y)/float(h))*2.0 - 1.0
@@ -31,7 +48,6 @@ parser.add_option("-p", "--preview", action="store_true", dest="preview", defaul
 parser.add_option("-l", "--lase", action="store_true", dest="laser", default=False,
                   help="Preview Scan")
 
-
 (options, args) = parser.parse_args()
 
 if options.laser:
@@ -51,26 +67,52 @@ cur_pixel = pixels[0, 0]
 print cur_pixel
 
 if options.vertical:
-    for x in range(width):
-        if options.laser:
-            ol.loadIdentity()
-            ol.scale((0.999, 0.999))
-        for y in range(height):
-            scanPixel(pixels[x, y], x, y, options.preview, options.laser, width, height)
-        if options.laser:
-            ol.renderFrame(100)
+    rangeA = range(width)
+    rangeB = range(height)
 else:
-    for y in range(height):
+    rangeA = range(height)
+    rangeB = range(width)
+    
+for dirA in rangeA:
+    scanline=[]
+    scanning_on = False
+    pixel_on =[0, 0]
+    if options.laser:
+        ol.loadIdentity()
+        ol.scale((0.999, 0.999))
+        x = 0
+        y = 0
+    for dirB in rangeB:
+        if options.vertical:
+            x = dirA
+            y = dirB
+        else:
+            x = dirB
+            y = dirA
+        if IsPixelOn(pixels[x, y]):
+            if scanning_on == False:
+                pixel_on = PixelCoordToGalvoCoord(x, y, width, height)
+                scanning_on = True
+        else:
+            if scanning_on:
+                scanline.append([pixel_on, PixelCoordToGalvoCoord(x, y, width, height)])
+                scanning_on = False
+    if scanning_on:
+        scanline.append([pixel_on, PixelCoordToGalvoCoord(x, y, width, height)])
+        scanning_on = False
+    for s in scanline:
+        if options.preview:
+            pygame.draw.line(window, (255, 255, 255), GalvoCoordToPixelCoord(s[0], width, height), GalvoCoordToPixelCoord(s[1], width, height))
         if options.laser:
-            ol.loadIdentity()
-            ol.scale((0.999, 0.999))
-        for x in range(width):
-            scanPixel(pixels[x, y], x, y, options.preview, options.laser, width, height)
-        if options.laser:
-            ol.renderFrame(100)
+            ol.line(s[0], s[1], ol.C_WHITE)
+    if options.preview:
+        pygame.display.flip()
+    if options.laser:
+        ol.renderFrame(100)
 
 print options.svgfile,
 print " Height:",
 print height,
 print " Width:",
 print width
+
