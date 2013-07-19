@@ -3,7 +3,7 @@ from optparse import OptionParser
 import sys
 import re
 import subprocess
-import os
+import os, glob
 
 try:
     input= raw_input
@@ -18,6 +18,7 @@ parser.add_option("-t", "--stl", action="store_true", dest="stl", default=False,
                   help="Input File is an STL file")
 parser.add_option("-l", "--laser", action="store_true", dest="laser", default=False,
                   help="LASER!")
+parser.add_option("-z", "--layer-height", dest="layer_height", default=0.1, help="Layer Height")
 parser.add_option("-s", "--simulate", action="store_true", dest="simulate", default=False,
                   help="Preview Scan")
 parser.add_option("-p", "--png", action="store_true", dest="nogen", default=False,
@@ -30,19 +31,28 @@ parser.add_option("-i", "--inkscape", dest="inkscape_path", help="full path to i
 parser.add_option("-b", "--bgcolor", dest="bgcolor", default="#000000", help="Background Color for Resulting PNG images")
 parser.add_option("-a", "--batch", action="store_true", dest="batch_inkscape", default=False,
                   help="Batch Inkscape Commands (faster, but not supported everywhere)")
+parser.add_option("-w", "--power", dest="power", default=1000, help="Laser Power (20-1000)")
+parser.add_option("-x", "--xscale", dest="xscale", default=0.999, help="X Scale for Laser Scan (0.001-0.999)")
+parser.add_option("-y", "--yscale", dest="yscale", default=0.999, help="Y Scale for Laser Scan (0.001-0.999)")
 (options, args) = parser.parse_args()
 
-if options.stl:
-	#Generate SVG File from Slic3r
-	print "Converting STL input file to SVG using Slic3r... (please wait)"
-	print options.slic3r_path
-	svg_file="OUTPUT FILE FROM SLIC3R"
-	
-if options.svg:
-	svg_file=options.printfile
+if options.printfile == None:
+	sys.exit("Missing an Input File!")
 
-if svg_file == None:
-	sys.exit("Missing an SVG Input File!")
+if options.stl and options.slic3r_path != None:
+	#Generate SVG File from Slic3r
+	cmd=options.slic3r_path+" --export-svg --layer-height "+str(options.layer_height)+" --first-layer-height "+str(options.layer_height)+" "+options.printfile
+	svg_file=options.printfile.replace(".stl",".svg")
+	svg_file=svg_file.replace(".STL",".svg")
+	if os.name == "nt":
+		subprocess.call(cmd)
+	else:
+		os.system(cmd)
+
+input("Hit Enter to Continue...")
+
+if options.svg or options.nogen:
+	svg_file=options.printfile
 
 print "Preparing file for print:",svg_file,"..."
 
@@ -89,7 +99,7 @@ print ""
 if not options.nogen:
 	input("Hit Enter to Begin Generation (Otherwise, hit CTRL-C)")
 
-if not options.nogen:
+if not options.nogen and options.inkscape_path != None:
 	try:
 		os.mkdir(output_path)
 	except OSError:
@@ -112,17 +122,23 @@ if not options.nogen:
 		else:
 			cmd=options.inkscape_path+" "+args
 			print cmd
-			os.system(cmd)
+			if os.name == "nt":
+				subprocess.call(cmd)
+			else:
+				os.system(cmd)
 
 	if options.batch_inkscape:
 		f1.close()
-	print ""
-	input("Hit Enter to Begin Batch (Otherwise, hit CTRL-C)")
+		print ""
+		input("Hit Enter to Begin Batch (Otherwise, hit CTRL-C)")
 
 	if options.batch_inkscape:
 		print "Doing a batch process of all inkscape commands... patience!"
 		cmd=options.inkscape_path+" --shell < .inkscapeBatch"
-		os.system(cmd)
+		if os.name == "nt":
+			subprocess.call(cmd)
+		else:
+			os.system(cmd)
 	
 input("Hit Enter to start printing (Otherwise, hit CTRL-C)")
 
@@ -139,9 +155,12 @@ for layeri in range(svg_layer_count-int(options.jump)):
 		lase="--laser"
 	p=str((float(layeri)/float(svg_layer_count))*100)+"%% "+str(layeri)+"/"+str(svg_layer_count)
 	sys.stdout.write("\r%s     " %p)
-	args=" --file="+output_path+"/"+"layer"+str(tlayer).zfill(4)+".png "+vert+" "+sim+" "+lase
+	args=" --file="+output_path+"/"+"layer"+str(tlayer).zfill(4)+".png "+vert+" "+sim+" "+lase+" --power="+str(options.power)+" --xscale="+str(options.xscale)+" --yscale="+str(options.yscale)
 	cmd = "python png_scan.py"+args
-	os.system("python png_scan.py"+args)
+	if os.name == "nt":
+		subprocess.call(cmd)
+	else:
+		os.system(cmd)
 
 print ""
 

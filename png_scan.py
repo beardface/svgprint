@@ -2,11 +2,10 @@ from PIL import Image
 from optparse import OptionParser
 import sys
 
-#import and init pygame
 import pygame
 from pygame import gfxdraw
 
-import pylase as ol
+#import pylase as ol
 
 from math import pi
 
@@ -48,9 +47,7 @@ parser.add_option("-l", "--laser", action="store_true", dest="laser", default=Fa
                   help="laser")
 
 parser.add_option("-w", "--power", dest="power", default=1000, help="Laser Power (20-1000)")
-
 parser.add_option("-x", "--xscale", dest="xscale", default=0.999, help="X Scale for Laser Scan (0.001-0.999)")
-
 parser.add_option("-y", "--yscale", dest="yscale", default=0.999, help="Y Scale for Laser Scan (0.001-0.999)")
 
 (options, args) = parser.parse_args()
@@ -63,10 +60,8 @@ i = Image.open(options.svgfile)
 pixels = i.load() # this is not a list
 width, height = i.size
 
-if options.preview:
-    pygame.init() 
-    #create the screen
-    window = pygame.display.set_mode((width, height)) 
+scaledWidth=int(float(options.xscale)*width)
+scaledHeight=int(float(options.yscale)*height)
 
 cur_pixel = pixels[0, 0]
 print cur_pixel
@@ -77,14 +72,14 @@ if options.vertical:
 else:
     rangeA = range(height)
     rangeB = range(width)
-    
+ 
+print "Computing the scanlines...."
+scanlines=[]
 for dirA in rangeA:
     scanline=[]
     scanning_on = False
     pixel_on =[0, 0]
     if options.laser:
-        ol.loadIdentity()
-        ol.scale((float(options.xscale), float(options.yscale)))
         x = 0
         y = 0
     for dirB in rangeB:
@@ -105,11 +100,25 @@ for dirA in rangeA:
     if scanning_on:
         scanline.append([pixel_on, PixelCoordToGalvoCoord(x, y, width, height)])
         scanning_on = False
-    for s in scanline:
+    if len(scanline) > 0:
+        scanlines.append(scanline)
+    scanlines.append(scanline)
+
+if options.preview:
+    pygame.init() 
+    #create the screen
+    window = pygame.display.set_mode((scaledWidth, scaledHeight)) 
+
+print "Found ",len(scanlines),"non blank scan lines... scanning now..."
+for l in scanlines:
+    if options.laser:
+        ol.loadIdentity()
+        ol.scale((float(options.xscale), float(options.yscale)))
+    for s in l: 
         if options.preview:
-            pygame.draw.line(window, (255, 255, 255), GalvoCoordToPixelCoord(s[0], width, height), GalvoCoordToPixelCoord(s[1], width, height))
+            pygame.draw.line(window, (0, 255, 0), GalvoCoordToPixelCoord(s[0], scaledWidth, scaledHeight), GalvoCoordToPixelCoord(s[1], scaledWidth, scaledHeight))
         if options.laser:
-            ol.line((s[0][0],s[0][1]), (s[1][0],s[1][1]), ol.C_WHITE)
+            ol.line((s[0][0],s[0][1]), (s[1][0],s[1][1]), ol.C_WHITE)   
     if options.preview:
         pygame.display.flip()
     if options.laser:
