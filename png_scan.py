@@ -29,7 +29,6 @@ def GalvoCoordToPixelCoord(point, w, h):
 def scanPixel(pixel, x, y, preview, laser, w,h):
     sX=(float(x)/float(w))*2.0 - 1.0
     sY=(float(y)/float(h))*2.0 - 1.0
-    #print sX," ",sY
     if pixel[0] != 0:
         if preview:
             pygame.draw.line(window, (255, 255, 255), (x, y), (x, y))
@@ -48,11 +47,11 @@ parser.add_option("-p", "--preview", action="store_true", dest="preview", defaul
 parser.add_option("-l", "--laser", action="store_true", dest="laser", default=False,
                   help="laser")
 
-parser.add_option("-w", "--power", dest="power", default=1000, help="Laser Power")
+parser.add_option("-w", "--power", dest="power", default=1000, help="Laser Power (20-1000)")
 
-parser.add_option("-x", "--xscale", dest="xscale", default=0.999, help="X Scale for Laser Scan")
+parser.add_option("-x", "--xscale", dest="xscale", default=0.999, help="X Scale for Laser Scan (0.001-0.999)")
 
-parser.add_option("-y", "--yscale", dest="yscale", default=0.999, help="Y Scale for Laser Scan")
+parser.add_option("-y", "--yscale", dest="yscale", default=0.999, help="Y Scale for Laser Scan (0.001-0.999)")
 
 (options, args) = parser.parse_args()
 
