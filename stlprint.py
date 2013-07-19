@@ -24,6 +24,7 @@ parser.add_option("-p", "--png", action="store_true", dest="nogen", default=Fals
                   help="Do Not Generate PNG files, they are ready")
 parser.add_option("-m", "--movie", action="store_true", dest="movie", default=False, help="Output FFMPEG Movie instead of printing")
 parser.add_option("-d", "--dpi", dest="dpi", default=2540, help="Print DPI")
+parser.add_option("-j", "--jump", dest="jump", default=0, help="For Debugging, how many layers to jump before printing")
 parser.add_option("-r", "--slic3r", dest="slic3r_path", help="full path to Slic3r executable (if printing in --stl mode)")
 parser.add_option("-i", "--inkscape", dest="inkscape_path", help="full path to inkscape executable")
 parser.add_option("-b", "--bgcolor", dest="bgcolor", default="#000000", help="Background Color for Resulting PNG images")
@@ -104,13 +105,14 @@ if not options.nogen:
 	for layeri in range(svg_layer_count):
 		p=str((float(layeri)/float(svg_layer_count))*100)+"%% "+str(layeri)+"/"+str(svg_layer_count)
 		sys.stdout.write("\r%s     " %p)
-		args="-j -i layer"+str(layeri)+" -e "+output_path+"/"+"layer"+str(layeri).zfill(4)+".png "+svg_file+" --export-background="+options.bgcolor+" --export-dpi="+str(options.dpi)
+		args="-j -i layer"+str(layeri)+" -e "+output_path+"/"+"layer"+str(layeri).zfill(4)+".png "+svg_file+" -C --export-background="+options.bgcolor+" --export-dpi="+str(options.dpi)
 		cmd=""
 		if options.batch_inkscape:
 			f1.write(args+"\n")
 		else:
 			cmd=options.inkscape_path+" "+args
-			subprocess.call(cmd)
+			print cmd
+			os.system(cmd)
 
 	if options.batch_inkscape:
 		f1.close()
@@ -120,23 +122,26 @@ if not options.nogen:
 	if options.batch_inkscape:
 		print "Doing a batch process of all inkscape commands... patience!"
 		cmd=options.inkscape_path+" --shell < .inkscapeBatch"
-		subprocess.call(cmd)
+		os.system(cmd)
 	
 input("Hit Enter to start printing (Otherwise, hit CTRL-C)")
-for layeri in range(svg_layer_count):
+
+for layeri in range(svg_layer_count-int(options.jump)):
+	tlayer=layeri+int(options.jump)
 	vert="-v"
 	sim=""
 	lase=""
-	if (layeri % 2) == 0:
+	if (tlayer % 2) == 0:
 		vert=""
 	if options.simulate:
-		sim="-p"
+		sim="--preview"
 	if options.laser:
-		lase="-l"
+		lase="--laser"
 	p=str((float(layeri)/float(svg_layer_count))*100)+"%% "+str(layeri)+"/"+str(svg_layer_count)
 	sys.stdout.write("\r%s     " %p)
-	args=" --file="+output_path+"/"+"layer"+str(layeri).zfill(4)+".png "+vert+" "+sim+" "+lase
-	subprocess.call("python png_scan.py"+args)
+	args=" --file="+output_path+"/"+"layer"+str(tlayer).zfill(4)+".png "+vert+" "+sim+" "+lase
+	cmd = "python png_scan.py"+args
+	os.system("python png_scan.py"+args)
 
 print ""
 

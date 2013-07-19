@@ -6,7 +6,7 @@ import sys
 import pygame
 from pygame import gfxdraw
 
-#import pylase as ol
+import pylase as ol
 
 from math import pi
 
@@ -45,8 +45,14 @@ parser.add_option("-v", "--vertical", action="store_true", dest="vertical", defa
 parser.add_option("-p", "--preview", action="store_true", dest="preview", default=False,
                   help="Preview Scan")
 
-parser.add_option("-l", "--lase", action="store_true", dest="laser", default=False,
-                  help="Preview Scan")
+parser.add_option("-l", "--laser", action="store_true", dest="laser", default=False,
+                  help="laser")
+
+parser.add_option("-w", "--power", dest="power", default=1000, help="Laser Power")
+
+parser.add_option("-x", "--xscale", dest="xscale", default=0.999, help="X Scale for Laser Scan")
+
+parser.add_option("-y", "--yscale", dest="yscale", default=0.999, help="Y Scale for Laser Scan")
 
 (options, args) = parser.parse_args()
 
@@ -79,7 +85,7 @@ for dirA in rangeA:
     pixel_on =[0, 0]
     if options.laser:
         ol.loadIdentity()
-        ol.scale((0.999, 0.999))
+        ol.scale((float(options.xscale), float(options.yscale)))
         x = 0
         y = 0
     for dirB in rangeB:
@@ -104,11 +110,11 @@ for dirA in rangeA:
         if options.preview:
             pygame.draw.line(window, (255, 255, 255), GalvoCoordToPixelCoord(s[0], width, height), GalvoCoordToPixelCoord(s[1], width, height))
         if options.laser:
-            ol.line(s[0], s[1], ol.C_WHITE)
+            ol.line((s[0][0],s[0][1]), (s[1][0],s[1][1]), ol.C_WHITE)
     if options.preview:
         pygame.display.flip()
     if options.laser:
-        ol.renderFrame(100)
+        ol.renderFrame(int(options.power))
 
 print options.svgfile,
 print " Height:",
