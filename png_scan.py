@@ -5,15 +5,27 @@ import sys
 import pygame
 from pygame import gfxdraw
 
-#import pylase as ol
+import pylase as ol
 
 from math import pi
 
 def IsPixelOn(pixel):
-    if pixel[0] != 0:
-        return True
-    else:
-        return False
+    try:
+       i = int(pixel)
+       if i == 0:
+          return False
+       else:
+          return True
+    except ValueError:
+       if pixel[0] != 0:
+          return True
+       else:
+          return False
+    except TypeError:
+       if pixel[0] != 0:
+          return True
+       else:
+          return False
 
 def PixelCoordToGalvoCoord(x, y, w, h):
     sX=(float(x)/float(w))*2.0 - 1.0
@@ -37,7 +49,7 @@ def scanPixel(pixel, x, y, preview, laser, w,h):
             ol.renderFrame(100)             
 
 parser = OptionParser()
-parser.add_option("-f", "--file", dest="svgfile", help="SVG Layer File to Print")
+parser.add_option("-f", "--file", dest="pngfile", help="SVG Layer File to Print")
 parser.add_option("-v", "--vertical", action="store_true", dest="vertical", default=False,
                   help="Scan vertically")
 parser.add_option("-p", "--preview", action="store_true", dest="preview", default=False,
@@ -55,7 +67,7 @@ parser.add_option("-y", "--yscale", dest="yscale", default=0.999, help="Y Scale 
 if options.laser:
     ol.init()
 
-i = Image.open(options.svgfile)
+i = Image.open(options.pngfile)
 
 pixels = i.load() # this is not a list
 width, height = i.size
@@ -124,7 +136,7 @@ for l in scanlines:
     if options.laser:
         ol.renderFrame(int(options.power))
 
-print options.svgfile,
+print options.pngfile,
 print " Height:",
 print height,
 print " Width:",

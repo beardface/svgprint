@@ -1,0 +1,10 @@
+sudo python png_scan.py --file=feeder/feeder\ top\ half_0001.png -l
+sudo python png_scan.py --file=feeder/feeder\ top\ half_0002.png -l
+sudo python png_scan.py --file=feeder/feeder\ top\ half_0003.png -l
+sudo python png_scan.py --file=feeder/feeder\ top\ half_0004.png -l
+sudo python png_scan.py --file=feeder/feeder\ top\ half_0005.png -l
+sudo python png_scan.py --file=feeder/feeder\ top\ half_0006.png -l
+sudo python png_scan.py --file=feeder/feeder\ top\ half_0007.png -l
+sudo python png_scan.py --file=feeder/feeder\ top\ half_0008.png -l
+sudo python png_scan.py --file=feeder/feeder\ top\ half_0009.png -l
+sudo python png_scan.py --file=feeder/feeder\ top\ half_0010.png -l
