@@ -5,7 +5,7 @@ import sys
 import pygame
 from pygame import gfxdraw
 
-#import pylase as ol
+import pylase as ol
 
 from math import pi
 

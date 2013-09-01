@@ -66,7 +66,6 @@ class printcore():
     def connect(self,port=None,baud=None):
         """Set port and baudrate if given, then connect to printer
         """
-        return
         if(self.printer):
             self.disconnect()
         if port is not None:
