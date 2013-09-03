@@ -156,8 +156,7 @@ if not options.nogen and options.inkscape_path != None:
     
 input("Hit Enter to start printing (Otherwise, hit CTRL-C)")
 
-printerSerial.send("G21", options.simulate)
-printerSerial.send("G28", options.simulate)
+printerSerial.send("G28 Z", options.simulate)
 input("Printer is now at Home Position, Hit Enter to REALLY start printing. (Otherwise, hit CTRL-C)")
 
 for layeri in range(svg_layer_count-int(options.jump)):
