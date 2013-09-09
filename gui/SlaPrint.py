@@ -173,6 +173,15 @@ class SlaPrintMainForm(wx.Frame):
 		
 		global simulate_timer_ms
 		self.simulate_timer_ms=simulate_timer_ms
+		
+		if os.name!="nt":
+			try:
+				os.rename('/etc/foo', '/etc/bar')
+			except IOError as e:
+				if (e[0] == errno.EPERM):
+					wx.MessageBox('You must launch this script as root! (sudo) \n\n Try again with "sudo python SlaPrint.py"', 'Error', 
+						wx.OK | wx.ICON_ERROR)
+					sys.exit(1)
 
 	def scanserial(self):
 		"""scan for available ports. return a list of device names."""
