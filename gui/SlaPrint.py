@@ -4,11 +4,13 @@ import wx, os, signal
 import subprocess
 import threading, time
 
+import Threads
+
 OPENLASE_PATH="/home/justin/Documents/GitHub/openlase"
 LASERSHARK_HOST_PATH="/home/justin/Documents/GitHub/lasershark_hostapp"
 
 #Debug Globals
-simulate_timer_ms=10
+simulate_timer_ms=100
 
 def scale_bitmap(bitmap, width, height):
 	image = wx.ImageFromBitmap(bitmap)
@@ -22,61 +24,11 @@ class RedirectText(object):
  
 	def write(self,string):
 		self.out.WriteText(string)
-		
-class PrintLoader(object):
-	def threadLoad(self, path, filelist, start_index):
-		self.running = True
-		self.print_index = start_index
-		self.path = path
-		while self.print_index  < len(filelist)-1:
-			self.current_file = filelist[self.print_index]
-			self.PrintLayer()
-			self.print_index  += 1	
-		print "Thread has been stopped"
-
-	def GetFileBeingPrinted(self):
-		return self.path+"/"+self.current_file
-		
-	def PrintLayer(self):
-		#TODO Call png_scan logic
-		print "Printing "+self.current_file+" ... "
-		
-		#TODO Move Z Axis
-		#time.sleep(1)
-		
-	def killThread(self):
-		self.running = False
-		
-class Loader(object):
-	def threadLoad(self, load_cmd):
-		self.run = subprocess.Popen(load_cmd, shell=True, stdout=subprocess.PIPE, preexec_fn=os.setsid)
-		print
-		self.running = True
-		self.pid = self.run.pid
-		while self.running:
-			line = self.run.stdout.readline()						 
-			wx.Yield()
-			if line.strip() == "":
-				pass
-			else:
-				print line.strip()
-			if not line: break
-		self.run.wait()
-		print "Thread has been stopped"
-
-	def killThread(self):
-		print "Waiting to kill "+str(self.pid)+" ..."
-		try:
-			self.run.kill()
-			os.killpg(self.pid, signal.SIGTERM)
-		except: 
-			print "Process "+str(self.pid)+" Not Found."
-		self.running = False
-		
+	
 class SlaPrintMainForm(wx.Frame):
  
 	def __init__(self):
-		wx.Frame.__init__(self, None, wx.ID_ANY, "OpenSL SLA Print Control Panel", size=(500, 1000))
+		wx.Frame.__init__(self, None, wx.ID_ANY, "OpenSL SLA Print Control Panel", size=(500, 750))
 		self.panel = wx.Panel(self, -1)	
 		self.imagePreviewPanel = wx.Panel(self, -1)
 		self.PhotoMaxSize = 350
@@ -93,15 +45,15 @@ class SlaPrintMainForm(wx.Frame):
 		file.Append(101, '&quit', 'Quit application')
 	#	menubar.Append(file, '&File')
 	
-		self.connectToLaserSharkButton = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons2/connect-button.png'), 32, 32))
-		self.disconnectFromLaserSharkButton	 = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons2/disconnect-button.png'), 32, 32))
-		self.selectFileToPrintButton  = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons2/browse-button.png'), 32, 32))
+		self.connectToLaserSharkButton = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons/connect-button.png'), 32, 32))
+		self.disconnectFromLaserSharkButton	 = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons/disconnect-button.png'), 32, 32))
+		self.selectFileToPrintButton  = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons/browse-button.png'), 32, 32))
 		
-		self.printButton  = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons2/print-button.png'), 32, 32))
-		self.simulateButton	 = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons2/simulate-button.png'), 32, 32))
-		self.pauseButton	 = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons2/pause-button.png'), 32, 32))
-		self.homeZButton  = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons2/home-z-button.png'), 32, 32))
-		self.ZUpButton	  = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons2/z-up-button.png'), 32, 32))
+		self.printButton  = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons/print-button.png'), 32, 32))
+		self.simulateButton	 = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons/simulate-button.png'), 32, 32))
+		self.pauseButton	 = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons/pause-button.png'), 32, 32))
+		self.homeZButton  = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons/home-z-button.png'), 32, 32))
+		self.ZUpButton	  = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons/z-up-button.png'), 32, 32))
 				
 		self.Bind(wx.EVT_BUTTON, self.startLaserShark, self.connectToLaserSharkButton)
 		self.Bind(wx.EVT_BUTTON, self.stopLaserShark, self.disconnectFromLaserSharkButton)
@@ -115,9 +67,12 @@ class SlaPrintMainForm(wx.Frame):
 		self.disconnectFromLaserSharkButton.Disable()
 		self.pauseButton.Disable()
 			
-		log = wx.TextCtrl(consolePanel, wx.ID_ANY, size=(500,300),
-						  style = wx.TE_MULTILINE|wx.TE_READONLY|wx.HSCROLL)
-						  
+		#log = wx.TextCtrl(consolePanel, wx.ID_ANY, size=(500,300),
+		#				  style = wx.TE_MULTILINE|wx.TE_READONLY|wx.HSCROLL)
+		
+		self.rbLaser = wx.RadioButton(consolePanel, -1, 'Laser!', (10, 10), style=wx.RB_GROUP)
+		self.rbPreview = wx.RadioButton(consolePanel, -1, 'Preview Scan', (10, 30))
+		
 		self.progress = wx.Slider(buttonPanel, -1, 0, 0, 100, size=(500, -1))
 		vbox = wx.BoxSizer(wx.VERTICAL)
 		hbox2 = wx.BoxSizer(wx.HORIZONTAL)
@@ -137,14 +92,14 @@ class SlaPrintMainForm(wx.Frame):
 		buttonPanel.SetSizer(vbox)
 		connectPanel.SetSizer(vbox)
 		sizer = wx.BoxSizer(wx.VERTICAL)
-		
+		listSerial=self.scanserial()
 		self.rescanbtn=wx.Button(connectPanel,-1,"Scan",size=(100,32))
 		self.rescanbtn.SetToolTip(wx.ToolTip("Communication Settings\nClick to rescan ports"))
 		self.rescanbtn.Bind(wx.EVT_BUTTON,self.rescanports)
 		self.port=""
 		hbox3.Add(self.rescanbtn,0,wx.TOP|wx.LEFT,0)
 		self.serialport = wx.ComboBox(connectPanel, -1,
-				choices=self.scanserial(),
+				choices=listSerial,
 				style=wx.CB_DROPDOWN, size=(100, 25))
 		self.serialport.SetToolTip(wx.ToolTip("Select Port Printer is connected to"))
 		self.rescanports()
@@ -164,7 +119,7 @@ class SlaPrintMainForm(wx.Frame):
 		sizer.Add(connectPanel, flag=wx.EXPAND)
 		sizer.Add(self.imagePreviewPanel, 1, flag=wx.EXPAND)
 		sizer.Add(buttonPanel, flag=wx.EXPAND, border=10)
-		sizer.Add(consolePanel, flag=wx.BOTTOM|wx.EXPAND, border=10)
+		sizer.Add(consolePanel, flag=wx.BOTTOM|wx.EXPAND)
 		self.SetMinSize((350, 300))
 		self.SetMenuBar(menubar)
 		self.CreateStatusBar()
@@ -172,11 +127,12 @@ class SlaPrintMainForm(wx.Frame):
 		self.Centre()
 		
 		# redirect text here
-		redir=RedirectText(log)
+		#redir=RedirectText(log)
 		#sys.stdout=redir
 		
 		self.print_loaded = False
 		self.connected = False
+		self.start_print_index = 0
 		
 		global simulate_timer_ms
 		self.simulate_timer_ms=simulate_timer_ms
@@ -189,7 +145,11 @@ class SlaPrintMainForm(wx.Frame):
 				wx.MessageBox('You must launch this script as root! (sudo) \n\n Try again with "sudo python SlaPrint.py"', 'Error', 
 				wx.OK | wx.ICON_ERROR)
 				sys.exit(1)
-
+		if os.name=="nt":
+			self.cmd_prefix="echo ";
+		else:
+			self.cmd_prefix="sudo ";
+		
 	def scanserial(self):
 		"""scan for available ports. return a list of device names."""
 		baselist=[]
@@ -203,6 +163,7 @@ class SlaPrintMainForm(wx.Frame):
 			except:
 				pass
 		return baselist+glob.glob('/dev/ttyUSB*') + glob.glob('/dev/ttyACM*') +glob.glob("/dev/tty.*")+glob.glob("/dev/cu.*")+glob.glob("/dev/rfcomm*")
+		print "Done Scanning...."
 
 	def rescanports(self,event=None):
 		scan=self.scanserial()
@@ -220,26 +181,26 @@ class SlaPrintMainForm(wx.Frame):
 			pass
 
 	def launch_openlase(self):
-		self.loadLaserSharkThread = Loader()
+		self.loadLaserSharkThread = Threads.Loader()
 		self.launch_qjackctl()
 		self.launch_openlase_output()
 		self.launch_openlase_simulator()
 		self.launch_lasershark_host_app()
 
 	def launch_lasershark_host_app(self):
-		self.lasersharkHostThread = threading.Thread(target=self.loadLaserSharkThread.threadLoad, args=("sudo "+self.LASERSHARK_HOST_PATH+"/lasershark_jack", ))
+		self.lasersharkHostThread = threading.Thread(target=self.loadLaserSharkThread.threadLoad, args=(self.cmd_prefix+self.LASERSHARK_HOST_PATH+"/lasershark_jack", ))
 		self.lasersharkHostThread.start()
 
 	def launch_qjackctl(self):
-		self.qJackCtlThread = threading.Thread(target=self.loadLaserSharkThread.threadLoad, args=("sudo qjackctl", ))
+		self.qJackCtlThread = threading.Thread(target=self.loadLaserSharkThread.threadLoad, args=(self.cmd_prefix+"qjackctl", ))
 		self.qJackCtlThread.start()
 
 	def launch_openlase_output(self):
-		self.openLaseOutputThread = threading.Thread(target=self.loadLaserSharkThread.threadLoad, args=("sudo "+self.OPENLASE_PATH+"/build/output/output", ))
+		self.openLaseOutputThread = threading.Thread(target=self.loadLaserSharkThread.threadLoad, args=(self.cmd_prefix+self.OPENLASE_PATH+"/build/output/output", ))
 		self.openLaseOutputThread.start()
 
 	def launch_openlase_simulator(self):
-		self.openLaseSimThread = threading.Thread(target=self.loadLaserSharkThread.threadLoad, args=("sudo "+self.OPENLASE_PATH+"/build/tools/simulator", ))
+		self.openLaseSimThread = threading.Thread(target=self.loadLaserSharkThread.threadLoad, args=(self.cmd_prefix+self.OPENLASE_PATH+"/build/tools/simulator", ))
 		self.openLaseSimThread.start()
 	
 	def kill_openlase(self):
@@ -250,13 +211,25 @@ class SlaPrintMainForm(wx.Frame):
 		
 	def on_print_timer(self, event):
 		self.currentImagePath = self.loadPrintThread.GetFileBeingPrinted()
-		self.DoLoadNextFile()
+		self.RenderImagePreview()
+		#if self.loadPrintThread.IsPrintComplete:
+		#	path, pFile = os.path.split(self.currentImagePath)
+		#	self.PrintComplete(self.GetFileList(path), path)
+			
+	def PrintComplete(self, list_of_files, path):
+		self.currentImagePath = path + "/"+ list_of_files[self.start_print_index]
+		self.UpdateProgressSlider(self.start_print_index, len(list_of_files))
+		self.RenderImagePreview()
+		self.PrintReset()
+		print "Print Complete"
 		
 	def disconnect(self):
 		self.connectToLaserSharkButton.Enable()
 		self.disconnectFromLaserSharkButton.Disable()
-		self.loadLaserSharkThread.killThread()
-		self.loadPrintThread.killThread()
+		if self.connected:
+			self.loadLaserSharkThread.killThread()
+			self.loadPrintThread.killThread()
+			self.timer.Stop()
 		
 	def startLaserShark(self, event): 
 		print "Connecting to OpenSL Printer..."
@@ -264,7 +237,7 @@ class SlaPrintMainForm(wx.Frame):
 		self.disconnectFromLaserSharkButton.Enable()
 		self.connectToLaserSharkButton.Disable()
 		self.launch_openlase()
-		self.loadPrintThread = PrintLoader()
+		self.loadPrintThread = Threads.PrintLoader()
 		
 	def stopLaserShark(self, event): 
 		print "Disconnecting from OpenSL Printer..."
@@ -279,7 +252,8 @@ class SlaPrintMainForm(wx.Frame):
 		if self.print_loaded:
 			print "Starting Print..."
 			path, pFile = os.path.split(self.currentImagePath)
-			self.printThread = threading.Thread(target=self.loadPrintThread.threadLoad, args=(path, self.GetFileList(path), self.GetFileIndex(self.GetFileList(path), pFile), ))
+			self.start_print_index = self.GetFileIndex(self.GetFileList(path), pFile)
+			self.printThread = threading.Thread(target=self.loadPrintThread.threadLoad, args=(path, self.GetFileList(path), self.start_print_index, self.rbPreview.GetValue(), self.rbLaser.GetValue()))
 			self.printThread.start()
 			
 			TIMER_ID = 101	# pick a number
@@ -300,13 +274,15 @@ class SlaPrintMainForm(wx.Frame):
 			self.timer.Start(self.simulate_timer_ms)  # x100 milliseconds
 		else:
 			print "Load a print first!"
-		
+	
+	def PrintReset(self):
+		self.pauseButton.Disable()
+		self.simulateButton.Enable()
+		self.timer.Stop()
+	
 	def pauseClicked(self, event):
 		if self.print_loaded:
-			self.pauseButton.Disable()
-			self.simulateButton.Enable()
-			print "Stopping Print"
-			self.timer.Stop()
+			self.PrintReset()
 		
 		
 	def HomeZ(self, event): 
@@ -342,6 +318,12 @@ class SlaPrintMainForm(wx.Frame):
 		
 	def GetFileIndex(self, list_of_files, filename):
 		return list_of_files.index(unicode(filename))
+	
+	def UpdateProgressSlider(self, index, len):
+		self.progress.SetValue((float(index)/float(len))*100.)
+	
+	def RenderImagePreview(self):
+		self.LoadFilePreview()
 		
 	def DoLoadNextFile(self):
 		"""
@@ -352,14 +334,12 @@ class SlaPrintMainForm(wx.Frame):
 		list_of_files = self.GetFileList(path)
 		fIndex = self.GetFileIndex(list_of_files, pFile)
 		fLen = len(list_of_files)
-		self.progress.SetValue((float(fIndex)/float(fLen))*100.)
+		self.UpdateProgressSlider(fIndex, fLen)
 		if fIndex < (fLen-1) :
 			self.currentImagePath = path + "/"+ list_of_files[fIndex + 1]
-			self.LoadFilePreview()
+			self.RenderImagePreview()
 		else:
-			print "Print Complete! Disconnecting."
-			self.timer.Stop()
-			self.disconnect()
+			self.PrintComplete(list_of_files, path)
 
 	def onView(self):
 		filepath = self.currentImagePath
