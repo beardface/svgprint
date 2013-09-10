@@ -8,7 +8,7 @@ OPENLASE_PATH="/home/justin/Documents/GitHub/openlase"
 LASERSHARK_HOST_PATH="/home/justin/Documents/GitHub/lasershark_hostapp"
 
 #Debug Globals
-simulate_timer_ms=50
+simulate_timer_ms=10
 
 def scale_bitmap(bitmap, width, height):
 	image = wx.ImageFromBitmap(bitmap)
@@ -42,7 +42,7 @@ class PrintLoader(object):
 		print "Printing "+self.current_file+" ... "
 		
 		#TODO Move Z Axis
-		time.sleep(1)
+		#time.sleep(1)
 		
 	def killThread(self):
 		self.running = False
@@ -338,7 +338,7 @@ class SlaPrintMainForm(wx.Frame):
 	def GetFileList(self, path):
 		extension = ".png"
 		list_of_files = [file for file in os.listdir(path) if file.lower().endswith(extension)]
-		return list_of_files
+		return sorted(list_of_files)
 		
 	def GetFileIndex(self, list_of_files, filename):
 		return list_of_files.index(unicode(filename))
@@ -347,10 +347,14 @@ class SlaPrintMainForm(wx.Frame):
 		"""
 		Load next file for print
 		"""
+		wx.Yield()
 		path, pFile = os.path.split(self.currentImagePath)
 		list_of_files = self.GetFileList(path)
-		if self.GetFileIndex(list_of_files, pFile) < (len(list_of_files)-1) :
-			self.currentImagePath = path + "/"+ list_of_files[self.GetFileIndex(list_of_files, pFile) + 1]
+		fIndex = self.GetFileIndex(list_of_files, pFile)
+		fLen = len(list_of_files)
+		self.progress.SetValue((float(fIndex)/float(fLen))*100.)
+		if fIndex < (fLen-1) :
+			self.currentImagePath = path + "/"+ list_of_files[fIndex + 1]
 			self.LoadFilePreview()
 		else:
 			print "Print Complete! Disconnecting."
