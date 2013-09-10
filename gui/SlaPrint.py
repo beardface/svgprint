@@ -4,6 +4,7 @@ import wx, os, signal
 import subprocess
 import threading, time
 
+import printcore
 import Threads
 
 OPENLASE_PATH="/home/justin/Documents/GitHub/openlase"
@@ -18,13 +19,6 @@ def scale_bitmap(bitmap, width, height):
 	result = wx.BitmapFromImage(image)
 	return result
 		
-class RedirectText(object):
-	def __init__(self,aWxTextCtrl):
-		self.out=aWxTextCtrl
- 
-	def write(self,string):
-		self.out.WriteText(string)
-	
 class SlaPrintMainForm(wx.Frame):
  
 	def __init__(self):
@@ -67,11 +61,25 @@ class SlaPrintMainForm(wx.Frame):
 		self.disconnectFromLaserSharkButton.Disable()
 		self.pauseButton.Disable()
 			
-		#log = wx.TextCtrl(consolePanel, wx.ID_ANY, size=(500,300),
-		#				  style = wx.TE_MULTILINE|wx.TE_READONLY|wx.HSCROLL)
-		
-		self.rbLaser = wx.RadioButton(consolePanel, -1, 'Laser!', (10, 10), style=wx.RB_GROUP)
-		self.rbPreview = wx.RadioButton(consolePanel, -1, 'Preview Scan', (10, 30))
+		wx.StaticBox(consolePanel, label='Scan Configuration', pos=(5, 5), size=(220, 170))
+		self.rbPreview = wx.RadioButton(consolePanel, -1, 'Preview Scan', (18, 30), style=wx.RB_GROUP)
+		self.rbLaser   = wx.RadioButton(consolePanel, -1, 'Laser!', (18, 50))
+		wx.StaticText(consolePanel, label='Laser Power', pos=(15, 80))
+		self.laserPowerSpin = wx.SpinCtrl(consolePanel, value='1000', pos=(107, 80), size=(80, -1), min=1, max=1000)
+		wx.StaticText(consolePanel, label='X Scale', pos=(15, 110))
+		self.xScaleSpin = wx.SpinCtrl(consolePanel, value='100', pos=(107, 110), size=(60, -1), min=1, max=100)
+		wx.StaticText(consolePanel, label='Y Scale', pos=(15, 130))
+		self.yScaleSpin = wx.SpinCtrl(consolePanel, value='100', pos=(107, 130), size=(60, -1), min=1, max=100)
+
+		wx.StaticBox(consolePanel, label='Z-Axis Configuration', pos=(225, 5), size=(200, 170))
+		self.rbZControlOn = wx.RadioButton(consolePanel, -1, 'Z Axis Control On', (238, 30), style=wx.RB_GROUP)
+		self.rbZControlOff   = wx.RadioButton(consolePanel, -1, 'Z Axis Control Off', (238, 50))
+		wx.StaticText(consolePanel, label='Layer Height (mm)', pos=(235, 80))
+		self.zLayerHeightSpin = wx.SpinCtrl(consolePanel, value='1', pos=(342, 80), size=(80, -1), min=1, max=5)
+		wx.StaticText(consolePanel, label='Z Motor Speed (mm/min)', pos=(235, 110))
+		self.zMotorSpeedSpin = wx.SpinCtrl(consolePanel, value='240', pos=(342, 110), size=(60, -1), min=100, max=300)
+		wx.StaticText(consolePanel, label='Tilt Step Height (mm)', pos=(235, 130))
+		self.zTiltHeightSpin = wx.SpinCtrl(consolePanel, value='5', pos=(342, 130), size=(60, -1), min=1, max=20)
 		
 		self.progress = wx.Slider(buttonPanel, -1, 0, 0, 100, size=(500, -1))
 		vbox = wx.BoxSizer(wx.VERTICAL)
@@ -90,21 +98,23 @@ class SlaPrintMainForm(wx.Frame):
 		vbox.Add(hbox3, 1, wx.EXPAND)
 		vbox.Add(hbox2, 1, wx.EXPAND)
 		buttonPanel.SetSizer(vbox)
-		connectPanel.SetSizer(vbox)
+		#connectPanel.SetSizer(vbox)
+		
 		sizer = wx.BoxSizer(wx.VERTICAL)
 		listSerial=self.scanserial()
-		self.rescanbtn=wx.Button(connectPanel,-1,"Scan",size=(100,32))
+		self.rescanbtn=wx.Button(connectPanel,0,"Refresh", size=(80,25))
 		self.rescanbtn.SetToolTip(wx.ToolTip("Communication Settings\nClick to rescan ports"))
 		self.rescanbtn.Bind(wx.EVT_BUTTON,self.rescanports)
 		self.port=""
 		hbox3.Add(self.rescanbtn,0,wx.TOP|wx.LEFT,0)
+		hbox3.Add(wx.StaticText(connectPanel,-1,"  Port: "),0,wx.RIGHT,0)
 		self.serialport = wx.ComboBox(connectPanel, -1,
 				choices=listSerial,
-				style=wx.CB_DROPDOWN, size=(100, 25))
+				style=wx.CB_DROPDOWN, size=(100, 25), pos=(5, 100))
 		self.serialport.SetToolTip(wx.ToolTip("Select Port Printer is connected to"))
 		self.rescanports()
 		hbox3.Add(self.serialport)
-		hbox3.Add(wx.StaticText(connectPanel,-1,"@"),0,wx.RIGHT|wx.ALIGN_CENTER,0)
+		hbox3.Add(wx.StaticText(connectPanel,-1,"  Baud: "),0,wx.RIGHT,0)
 		self.baud = wx.ComboBox(connectPanel, -1,
 				choices=["2400", "9600", "19200", "38400", "57600", "115200", "250000"],
 				style=wx.CB_DROPDOWN,  size=(100, 25))
@@ -126,10 +136,6 @@ class SlaPrintMainForm(wx.Frame):
 		self.SetSizer(sizer)
 		self.Centre()
 		
-		# redirect text here
-		#redir=RedirectText(log)
-		#sys.stdout=redir
-		
 		self.print_loaded = False
 		self.connected = False
 		self.start_print_index = 0
@@ -149,6 +155,7 @@ class SlaPrintMainForm(wx.Frame):
 			self.cmd_prefix="echo ";
 		else:
 			self.cmd_prefix="sudo ";
+		self.printerSerial=printcore.printcore()
 		
 	def scanserial(self):
 		"""scan for available ports. return a list of device names."""
@@ -181,6 +188,8 @@ class SlaPrintMainForm(wx.Frame):
 			pass
 
 	def launch_openlase(self):
+		print "Connecting to Serial "+self.serialport.GetValue()+"@ "+self.baud.GetValue()
+		self.printerSerial.connect(self.serialport.GetValue(), self.baud.GetValue())
 		self.loadLaserSharkThread = Threads.Loader()
 		self.launch_qjackctl()
 		self.launch_openlase_output()
@@ -227,6 +236,7 @@ class SlaPrintMainForm(wx.Frame):
 		self.connectToLaserSharkButton.Enable()
 		self.disconnectFromLaserSharkButton.Disable()
 		if self.connected:
+			self.printerSerial.disconnect()
 			self.loadLaserSharkThread.killThread()
 			self.loadPrintThread.killThread()
 			self.timer.Stop()
@@ -253,7 +263,7 @@ class SlaPrintMainForm(wx.Frame):
 			print "Starting Print..."
 			path, pFile = os.path.split(self.currentImagePath)
 			self.start_print_index = self.GetFileIndex(self.GetFileList(path), pFile)
-			self.printThread = threading.Thread(target=self.loadPrintThread.threadLoad, args=(path, self.GetFileList(path), self.start_print_index, self.rbPreview.GetValue(), self.rbLaser.GetValue()))
+			self.printThread = threading.Thread(target=self.loadPrintThread.threadLoad, args=(path, self.GetFileList(path), self.start_print_index, self.rbPreview.GetValue(), self.rbLaser.GetValue(), self.laserPowerSpin.GetValue(), self.xScaleSpin.GetValue(), self.yScaleSpin.GetValue(), self.rbZControlOff.GetValue(), self.zTiltHeightSpin.GetValue(), self.zMotorSpeedSpin.GetValue(),  self.zLayerHeightSpin.GetValue(), self.printerSerial))
 			self.printThread.start()
 			
 			TIMER_ID = 101	# pick a number
@@ -286,10 +296,13 @@ class SlaPrintMainForm(wx.Frame):
 		
 		
 	def HomeZ(self, event): 
-		print "Homing Z...."
+		self.printerSerial.send("G28 Z", self.rbZControlOff.GetValue())
+		self.printerSerial.send("G91", self.rbZControlOff.GetValue())
 		
 	def ZUp(self, event): 
-		print "Moving Z Up..."
+		self.printerSerial.send("G91", self.rbZControlOff.GetValue())
+		self.printerSerial.send("G1 Z10.0 E10.0 F100.0", self.rbZControlOff.GetValue()) # Z axis up 30
+		self.printerSerial.send("M84", self.rbZControlOff.GetValue()) # Motors Off
 	
 	def LoadFilePreview(self):
 		self.onView()

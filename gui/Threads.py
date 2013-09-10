@@ -5,13 +5,8 @@ import threading, time
 
 import PngScan
 
-#Scan Settings
-XSCALE=1.0
-YSCALE=1.0
-LASER_POWER=1000
-
 class PrintLoader(object):
-	def threadLoad(self, path, filelist, start_index, previewMode, laserMode):
+	def threadLoad(self, path, filelist, start_index, previewMode, laserMode, laserPower, xScale, yScale, simZ, tilt, move_speed, layer_height, printerSerial):
 		self.running = True
 		self.print_index = start_index
 		self.path = path
@@ -19,9 +14,17 @@ class PrintLoader(object):
 		self.vertical=False
 		self.laserMode = laserMode
 		self.previewMode = previewMode
+		self.laserPower = float(laserPower)
+		self.xscale = float(xScale)/100.0
+		self.yscale = float(yScale)/100.0
+		self.simulate = simZ
+		self.tilt = tilt
+		self.tilt_speed = move_speed
+		self.layer_move=float(self.tilt)-float(layer_height)
+		self.printerSerial = printerSerial
 		while self.print_index  < len(filelist)-1:
 			self.current_file = filelist[self.print_index]
-			self.PrintLayer(self.laserMode, self.previewMode)
+			self.PrintLayer(self.laserMode, self.previewMode, self.laserPower, self.xscale, self.yscale)
 			self.print_index  += 1	
 			if self.vertical:
 				self.vertical = False
@@ -32,12 +35,19 @@ class PrintLoader(object):
 	def GetFileBeingPrinted(self):
 		return self.path+"/"+self.current_file
 		
-	def PrintLayer(self, laser, preview):
+	def PrintLayer(self, laser, preview, laserPower, xscale, yscale):
 		print "Printing "+self.current_file+" ... "
-		global XSCALE
-		global YSCALE
-		global LASER_POWER
-		self.pngScanner.ScanLayer(self.path+"/"+self.current_file, self.vertical, preview, laser, LASER_POWER, XSCALE, YSCALE)
+		self.pngScanner.ScanLayer(self.path+"/"+self.current_file, self.vertical, preview, laser, laserPower, xscale, yscale)
+		print "Moving Z Axis"
+		self.printerSerial.send("G91", self.simulate) # Relative Pos
+		self.printerSerial.send("G1 L"+str(self.tilt)+" F"+str(self.tilt_speed), self.simulate) #Left side up 5mm
+		self.printerSerial.send("G4 P500", self.simulate) # Wait 500 ms
+		self.printerSerial.send("G1 R"+str(self.tilt)+" F"+str(self.tilt_speed), self.simulate) # Right side up 5 mm
+		self.printerSerial.send("G4 P500", self.simulate) # Wait 500 ms
+		self.printerSerial.send("G1 Z-"+str(self.layer_move)+" F"+str(self.tilt_speed), self.simulate) # Z down 5 mm
+		self.printerSerial.send("G4 P1000", self.simulate) # Wait 1 Second
+		self.printerSerial.send("M84", self.simulate) # Motors Off
+		time.sleep(5) #Sleep for 10 seconds
 	
 	def SetLaserMode(self, b):
 		self.laserMode = b

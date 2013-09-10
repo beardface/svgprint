@@ -2,7 +2,7 @@ from PIL import Image
 from optparse import OptionParser
 import sys
 
-import pygame
+import pygame, time
 from pygame import gfxdraw
 
 from math import pi
