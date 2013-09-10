@@ -4,6 +4,9 @@ import wx, os, signal
 import subprocess
 import threading, time
 
+OPENLASE_PATH="/home/justin/Documents/GitHub/openlase"
+LASERSHARK_HOST_PATH="/home/justin/Documents/GitHub/lasershark_hostapp"
+
 #Debug Globals
 simulate_timer_ms=50
 
@@ -32,7 +35,7 @@ class PrintLoader(object):
 		print "Thread has been stopped"
 
 	def GetFileBeingPrinted(self):
-		return self.path+"\\"+self.current_file
+		return self.path+"/"+self.current_file
 		
 	def PrintLayer(self):
 		#TODO Call png_scan logic
@@ -46,24 +49,28 @@ class PrintLoader(object):
 		
 class Loader(object):
 	def threadLoad(self, load_cmd):
-		run = subprocess.Popen(load_cmd, shell=True, stdout=subprocess.PIPE)
+		self.run = subprocess.Popen(load_cmd, shell=True, stdout=subprocess.PIPE, preexec_fn=os.setsid)
 		print
 		self.running = True
-		self.pid = run.pid
+		self.pid = self.run.pid
 		while self.running:
-			line = run.stdout.readline()						 
+			line = self.run.stdout.readline()						 
 			wx.Yield()
 			if line.strip() == "":
 				pass
 			else:
 				print line.strip()
 			if not line: break
-		run.wait()
+		self.run.wait()
 		print "Thread has been stopped"
 
 	def killThread(self):
 		print "Waiting to kill "+str(self.pid)+" ..."
-		os.kill(self.pid, signal.SIGTERM)
+		try:
+			self.run.kill()
+			os.killpg(self.pid, signal.SIGTERM)
+		except: 
+			print "Process "+str(self.pid)+" Not Found."
 		self.running = False
 		
 class SlaPrintMainForm(wx.Frame):
@@ -86,15 +93,15 @@ class SlaPrintMainForm(wx.Frame):
 		file.Append(101, '&quit', 'Quit application')
 	#	menubar.Append(file, '&File')
 	
-		self.connectToLaserSharkButton = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons/connect-button.png'), 32, 32))
-		self.disconnectFromLaserSharkButton	 = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons/disconnect-button.png'), 32, 32))
-		self.selectFileToPrintButton  = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons/browse-button.png'), 32, 32))
+		self.connectToLaserSharkButton = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons2/connect-button.png'), 32, 32))
+		self.disconnectFromLaserSharkButton	 = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons2/disconnect-button.png'), 32, 32))
+		self.selectFileToPrintButton  = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons2/browse-button.png'), 32, 32))
 		
-		self.printButton  = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons/print-button.png'), 32, 32))
-		self.simulateButton	 = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons/simulate-button.png'), 32, 32))
-		self.pauseButton	 = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons/pause-button.png'), 32, 32))
-		self.homeZButton  = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons/home-z-button.png'), 32, 32))
-		self.ZUpButton	  = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons/z-up-button.png'), 32, 32))
+		self.printButton  = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons2/print-button.png'), 32, 32))
+		self.simulateButton	 = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons2/simulate-button.png'), 32, 32))
+		self.pauseButton	 = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons2/pause-button.png'), 32, 32))
+		self.homeZButton  = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons2/home-z-button.png'), 32, 32))
+		self.ZUpButton	  = wx.BitmapButton(buttonPanel, -1, scale_bitmap(wx.Bitmap('icons2/z-up-button.png'), 32, 32))
 				
 		self.Bind(wx.EVT_BUTTON, self.startLaserShark, self.connectToLaserSharkButton)
 		self.Bind(wx.EVT_BUTTON, self.stopLaserShark, self.disconnectFromLaserSharkButton)
@@ -166,22 +173,22 @@ class SlaPrintMainForm(wx.Frame):
 		
 		# redirect text here
 		redir=RedirectText(log)
-		sys.stdout=redir
+		#sys.stdout=redir
 		
 		self.print_loaded = False
 		self.connected = False
 		
 		global simulate_timer_ms
 		self.simulate_timer_ms=simulate_timer_ms
-		
+		global OPENLASE_PATH
+		self.OPENLASE_PATH=OPENLASE_PATH
+		global LASERSHARK_HOST_PATH
+		self.LASERSHARK_HOST_PATH=LASERSHARK_HOST_PATH
 		if os.name!="nt":
-			try:
-				os.rename('/etc/foo', '/etc/bar')
-			except IOError as e:
-				if (e[0] == errno.EPERM):
-					wx.MessageBox('You must launch this script as root! (sudo) \n\n Try again with "sudo python SlaPrint.py"', 'Error', 
-						wx.OK | wx.ICON_ERROR)
-					sys.exit(1)
+			if (os.getuid() != 0):
+				wx.MessageBox('You must launch this script as root! (sudo) \n\n Try again with "sudo python SlaPrint.py"', 'Error', 
+				wx.OK | wx.ICON_ERROR)
+				sys.exit(1)
 
 	def scanserial(self):
 		"""scan for available ports. return a list of device names."""
@@ -212,6 +219,31 @@ class SlaPrintMainForm(wx.Frame):
 		except:
 			pass
 
+	def launch_openlase(self):
+		self.loadLaserSharkThread = Loader()
+		self.launch_qjackctl()
+		self.launch_openlase_output()
+		self.launch_openlase_simulator()
+		self.launch_lasershark_host_app()
+
+	def launch_lasershark_host_app(self):
+		self.lasersharkHostThread = threading.Thread(target=self.loadLaserSharkThread.threadLoad, args=("sudo "+self.LASERSHARK_HOST_PATH+"/lasershark_jack", ))
+		self.lasersharkHostThread.start()
+
+	def launch_qjackctl(self):
+		self.qJackCtlThread = threading.Thread(target=self.loadLaserSharkThread.threadLoad, args=("sudo qjackctl", ))
+		self.qJackCtlThread.start()
+
+	def launch_openlase_output(self):
+		self.openLaseOutputThread = threading.Thread(target=self.loadLaserSharkThread.threadLoad, args=("sudo "+self.OPENLASE_PATH+"/build/output/output", ))
+		self.openLaseOutputThread.start()
+
+	def launch_openlase_simulator(self):
+		self.openLaseSimThread = threading.Thread(target=self.loadLaserSharkThread.threadLoad, args=("sudo "+self.OPENLASE_PATH+"/build/tools/simulator", ))
+		self.openLaseSimThread.start()
+	
+	def kill_openlase(self):
+		print "Killing Openlase..."
 
 	def on_timer(self, event):
 		self.DoLoadNextFile()
@@ -231,13 +263,12 @@ class SlaPrintMainForm(wx.Frame):
 		self.connected = True
 		self.disconnectFromLaserSharkButton.Enable()
 		self.connectToLaserSharkButton.Disable()
-		self.loadLaserSharkThread = Loader()
-		self.laserSharkThread = threading.Thread(target=self.loadLaserSharkThread.threadLoad, args=("notepad %s" % "filename.txt", ))
-		self.laserSharkThread.start()
+		self.launch_openlase()
 		self.loadPrintThread = PrintLoader()
 		
 	def stopLaserShark(self, event): 
 		print "Disconnecting from OpenSL Printer..."
+		self.kill_openlase()
 		self.disconnect()
 		
 	def printClicked(self, event):
@@ -319,7 +350,7 @@ class SlaPrintMainForm(wx.Frame):
 		path, pFile = os.path.split(self.currentImagePath)
 		list_of_files = self.GetFileList(path)
 		if self.GetFileIndex(list_of_files, pFile) < (len(list_of_files)-1) :
-			self.currentImagePath = path + "\\"+ list_of_files[self.GetFileIndex(list_of_files, pFile) + 1]
+			self.currentImagePath = path + "/"+ list_of_files[self.GetFileIndex(list_of_files, pFile) + 1]
 			self.LoadFilePreview()
 		else:
 			print "Print Complete! Disconnecting."
