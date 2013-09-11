@@ -68,18 +68,18 @@ class SlaPrintMainForm(wx.Frame):
 		self.laserPowerSpin = wx.SpinCtrl(consolePanel, value='1000', pos=(107, 80), size=(80, -1), min=1, max=1000)
 		wx.StaticText(consolePanel, label='X Scale', pos=(15, 110))
 		self.xScaleSpin = wx.SpinCtrl(consolePanel, value='100', pos=(107, 110), size=(60, -1), min=1, max=100)
-		wx.StaticText(consolePanel, label='Y Scale', pos=(15, 130))
-		self.yScaleSpin = wx.SpinCtrl(consolePanel, value='100', pos=(107, 130), size=(60, -1), min=1, max=100)
+		wx.StaticText(consolePanel, label='Y Scale', pos=(15, 140))
+		self.yScaleSpin = wx.SpinCtrl(consolePanel, value='100', pos=(107, 140), size=(60, -1), min=1, max=100)
 
-		wx.StaticBox(consolePanel, label='Z-Axis Configuration', pos=(225, 5), size=(200, 170))
+		wx.StaticBox(consolePanel, label='Z-Axis Configuration', pos=(225, 5), size=(270, 170))
 		self.rbZControlOn = wx.RadioButton(consolePanel, -1, 'Z Axis Control On', (238, 30), style=wx.RB_GROUP)
 		self.rbZControlOff   = wx.RadioButton(consolePanel, -1, 'Z Axis Control Off', (238, 50))
 		wx.StaticText(consolePanel, label='Layer Height (mm)', pos=(235, 80))
-		self.zLayerHeightSpin = wx.SpinCtrl(consolePanel, value='1', pos=(342, 80), size=(80, -1), min=1, max=5)
+		self.zLayerHeightSpin = wx.SpinCtrl(consolePanel, value='1', pos=(402, 80), size=(80, -1), min=1, max=5)
 		wx.StaticText(consolePanel, label='Z Motor Speed (mm/min)', pos=(235, 110))
-		self.zMotorSpeedSpin = wx.SpinCtrl(consolePanel, value='240', pos=(342, 110), size=(60, -1), min=100, max=300)
-		wx.StaticText(consolePanel, label='Tilt Step Height (mm)', pos=(235, 130))
-		self.zTiltHeightSpin = wx.SpinCtrl(consolePanel, value='5', pos=(342, 130), size=(60, -1), min=1, max=20)
+		self.zMotorSpeedSpin = wx.SpinCtrl(consolePanel, value='240', pos=(422, 110), size=(60, -1), min=100, max=300)
+		wx.StaticText(consolePanel, label='Tilt Step Height (mm)', pos=(235, 140))
+		self.zTiltHeightSpin = wx.SpinCtrl(consolePanel, value='5', pos=(422, 140), size=(60, -1), min=1, max=20)
 		
 		self.progress = wx.Slider(buttonPanel, -1, 0, 0, 100, size=(500, -1))
 		vbox = wx.BoxSizer(wx.VERTICAL)
@@ -296,13 +296,13 @@ class SlaPrintMainForm(wx.Frame):
 		
 		
 	def HomeZ(self, event): 
-		self.printerSerial.send("G28 Z", self.rbZControlOff.GetValue())
-		self.printerSerial.send("G91", self.rbZControlOff.GetValue())
+		self.printerSerial.send_now("G28 Z")
+		self.printerSerial.send_now("G91")
 		
 	def ZUp(self, event): 
-		self.printerSerial.send("G91", self.rbZControlOff.GetValue())
-		self.printerSerial.send("G1 Z10.0 E10.0 F100.0", self.rbZControlOff.GetValue()) # Z axis up 30
-		self.printerSerial.send("M84", self.rbZControlOff.GetValue()) # Motors Off
+		self.printerSerial.send_now("G91")
+		self.printerSerial.send_now("G1 Z10.0 E10.0 F100.0") # Z axis up 30
+		self.printerSerial.send_now("M84") # Motors Off
 	
 	def LoadFilePreview(self):
 		self.onView()
