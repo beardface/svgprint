@@ -5,6 +5,8 @@ import sys
 import pygame, time
 from pygame import gfxdraw
 
+import pylase
+
 from math import pi
 
 def module_exists(module_name):
